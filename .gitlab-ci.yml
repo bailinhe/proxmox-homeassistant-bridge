@@ -1,0 +1,61 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  NS: proxmox-ha-bridge 
+  IMG_PULL_SECRET: registry-credentials
+
+build:
+  stage: build
+  image: docker:stable
+  tags:
+    - docker
+    - gce
+  services:
+    - docker:dind
+  variables:
+    IMG_BASE: $CI_REGISTRY_IMAGE
+    IMG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo $IMG
+    - docker build --no-cache -t $IMG -f Dockerfile .
+    - docker tag $IMG "$IMG_BASE:latest"
+    - docker push $IMG
+    - docker push "$IMG_BASE:latest"
+
+deploy:
+  stage: deploy
+  image:
+    name: dtzar/helm-kubectl:latest
+    entrypoint: ['']
+  before_script:
+    - kubectl config use-context bighotel/kube-configs:bighotel
+  script:
+    - kubectl create namespace $NS --dry-run=client -o yaml | kubectl apply -f -
+    - |
+      kubectl create secret -n $NS --dry-run=client -o yaml \
+        docker-registry \
+        $IMG_PULL_SECRET \
+        --docker-server=$CI_REGISTRY \
+        --docker-username=$CI_DEPLOY_USER \
+        --docker-password=$CI_DEPLOY_PASSWORD | kubectl apply -f -
+
+    - |
+      kubectl create secret -n $NS --dry-run=client -o yaml \
+        generic \
+        proxmox-ha-bridge-secrets \
+        --from-literal=PROXMOX_HA_BRIDGE_NATS_PASSWORD=${PROXMOX_HA_BRIDGE_NATS_PASSWORD} \
+        --from-literal=PROXMOX_HA_BRIDGE_NATS_USERNAME=${PROXMOX_HA_BRIDGE_NATS_USERNAME} \
+        --from-literal=PROXMOX_HA_BRIDGE_PROXMOX_TOKEN_ID=${PROXMOX_HA_BRIDGE_PROXMOX_TOKEN_ID} \
+        --from-literal=PROXMOX_HA_BRIDGE_PROXMOX_TOKEN_SECRET=${PROXMOX_HA_BRIDGE_PROXMOX_TOKEN_SECRET} \
+        | kubectl apply -f -
+
+    - |
+      cp ${CONFIG_YAML} /tmp/config.yaml
+      kubectl create configmap -n $NS --dry-run=client -o yaml \
+        ha-bridge-config --from-file=/tmp/config.yaml | kubectl apply -f -
+
+    - kubectl apply -n $NS -f deployment.yaml

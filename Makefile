@@ -20,7 +20,7 @@ rm-air:
 	rm -rf $(AIR)
 
 $(MAIN):
-	go build -o $(MAIN) main.go
+	export CGO_ENABLED=0; go build -o $(MAIN) main.go
 	chmod +x $(MAIN)
 
 build: $(MAIN)
