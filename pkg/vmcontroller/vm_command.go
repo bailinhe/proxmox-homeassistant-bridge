@@ -183,7 +183,7 @@ func (s *VMCommandSelect) Run(ctx context.Context) {
 
 			s.logger.Info("received command", zap.String("command", string(cmd.Command)), zap.String("vm", s.vm.Name()))
 
-			func() {
+			go func() {
 				if err = s.handleCommand(ctx, cmd.Command); err != nil {
 					s.logger.Error("handle command error", zap.Error(err), zap.String("vm", s.vm.Name()))
 				}
