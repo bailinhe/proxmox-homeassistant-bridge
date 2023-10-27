@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxmox-ha-bridge
+  labels:
+    app: proxmox-ha-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxmox-ha-bridge
+  template:
+    metadata:
+      labels:
+        app: proxmox-ha-bridge
+    spec:
+      volumes:
+        - name: config
+          configMap:
+            name: ha-bridge-config
+      containers:
+        - name: proxmox-ha-bridge
+          image: registry.gitlab.com/bighotel/proxmox-ha-bridge:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "20m"
+              memory: "55M"
+            limits:
+              cpu: "1000m"
+              memory: "128M"
+          env:
+            - name: PROXMOX_HA_BRIDGE_NATS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-ha-bridge-secrets
+                  key: PROXMOX_HA_BRIDGE_NATS_PASSWORD
+            - name: PROXMOX_HA_BRIDGE_NATS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-ha-bridge-secrets
+                  key: PROXMOX_HA_BRIDGE_NATS_USERNAME
+            - name: PROXMOX_HA_BRIDGE_PROXMOX_TOKEN_ID
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-ha-bridge-secrets
+                  key: PROXMOX_HA_BRIDGE_PROXMOX_TOKEN_ID
+            - name: PROXMOX_HA_BRIDGE_PROXMOX_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: proxmox-ha-bridge-secrets
+                  key: PROXMOX_HA_BRIDGE_PROXMOX_TOKEN_SECRET
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          args:
+            - --config=/config/config.yaml
+            - start
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: registry-credentials

@@ -4,9 +4,9 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = [
-    "--debug",
+    "--config",
+    "config-dev-example.yaml",
     "start",
-    "--insecure",
   ]
   bin = "./tmp/main"
   cmd = "go build -o ./tmp/main ."

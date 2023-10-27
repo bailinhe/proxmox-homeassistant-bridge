@@ -1,0 +1,12 @@
+proxmox:
+  insecure: true
+  server-url: https://proxmox.int.bailinhe.com
+  vm-ids:
+    - 101
+    - 102
+
+nats:
+  server: nats://nats.int.bailinhe.com:4222
+
+logging:
+  debug: true
