@@ -101,7 +101,7 @@ func (p *VM) Start(ctx context.Context) error {
 			p.logger.Error("error starting vm", zap.Error(err))
 			p.logger.Sugar().Infof("retrying in %d minutes", i)
 
-			time.Sleep(time.Duration(i) * time.Second)
+			time.Sleep(time.Duration(i) * time.Minute)
 
 			continue
 		}
