@@ -69,6 +69,11 @@ func (p *VM) waitTask(ctx context.Context, task *goproxmox.Task) error {
 	}
 }
 
+// SetLogger sets the logger
+func (p *VM) SetLogger(logger *zap.Logger) {
+	p.logger = logger
+}
+
 // Start starts the vm
 func (p *VM) Start(ctx context.Context) error {
 	p.logger.Info("starting vm", zap.Int64("vmid", int64(p.vm.VMID)))

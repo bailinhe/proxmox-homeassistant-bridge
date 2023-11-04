@@ -1,6 +1,10 @@
 package vmcontroller
 
-import "context"
+import (
+	"context"
+
+	"go.uber.org/zap"
+)
 
 // VMController is a virtual machine controller
 type VMController interface {
@@ -20,4 +24,6 @@ type VMController interface {
 	ID() string
 	// Name returns the name of the vm
 	Name() string
+	// SetLogger sets the logger
+	SetLogger(logger *zap.Logger)
 }
