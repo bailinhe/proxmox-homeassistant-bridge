@@ -8,6 +8,7 @@ import (
 	"gitlab.com/bighotel/proxmox-ha-bridge/pkg/events"
 	"gitlab.com/bighotel/proxmox-ha-bridge/pkg/homeassistant"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -107,20 +108,38 @@ func (d *VirtualMachineMQTTDevice) Run(ctx context.Context) {
 		Name:         fmt.Sprintf("vm-%s-%s", d.vm.ID(), d.vm.Name()),
 	}
 
-	d.entities = []HomeAssistantEntity{
-		NewVMStateSensor(
-			d.vm, d.ec, device,
-			VMStateSensorWithLogger(d.logger),
-			VMStateSensorWithAvailabilityPublishInterval(d.availabilityPublishInterval),
-			VMStateSensorWithProbeInterval(d.probeInterval),
-		),
+	events := NewVMEventSensor(
+		d.ec, device,
+		VMEventSensorWithAvailabilityPublishInterval(d.availabilityPublishInterval),
+		VMEventSensorWithLogger(d.logger),
+	)
 
-		NewVMCommandSelect(
-			d.vm, d.ec, device,
-			VMCommandSelectWithLogger(d.logger),
-			VMCommandSelectWithAvailabilityPublishInterval(d.availabilityPublishInterval),
-		),
-	}
+	sensor := NewVMStateSensor(
+		d.vm, d.ec, device,
+		VMStateSensorWithLogger(d.logger),
+		VMStateSensorWithAvailabilityPublishInterval(d.availabilityPublishInterval),
+		VMStateSensorWithProbeInterval(d.probeInterval),
+	)
+
+	eventslogger := d.logger.WithOptions(
+		zap.Hooks(func(entry zapcore.Entry) error {
+			if entry.Level < zapcore.InfoLevel {
+				return nil
+			}
+
+			return events.EmitEvent(ctx, entry.Message)
+		}),
+	)
+
+	command := NewVMCommandSelect(
+		d.vm, d.ec, device,
+		VMCommandSelectWithAvailabilityPublishInterval(d.availabilityPublishInterval),
+		VMCommandSelectWithLogger(eventslogger),
+	)
+
+	d.vm.SetLogger(eventslogger)
+
+	d.entities = []HomeAssistantEntity{sensor, command, events}
 
 	for _, s := range d.entities {
 		go s.Run(ctx)
